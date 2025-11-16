@@ -12,11 +12,13 @@ import Flex from '@/src/componenta/buoi2/Flex';
 import Cell from '@/src/componenta/buoi2/Cell';
 import Test from '@/src/componenta/buoi2/Test';
 
+import Card from '@/src/componenta/buoi2/Card';
 
+import Home from '@/src/screens/Home';
 
 export default function HomeScreen() {
   return (
-    <Test/>
+    <Home />
     // <ParallaxScrollView
     //   headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
     //   headerImage={
