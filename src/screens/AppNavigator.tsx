@@ -1,48 +1,31 @@
 // src/screens/AppNavigator.tsx
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import Home from './Home';
 import DetailsScreen from '../screens/DetailsScreen';
-import Home from '../screens/Home';
-// import LoginScreen from './LoginScreen';
-// import SignupScreen from './SignupScreen';
+import { Product } from '../components/Type';
 
-type RootStackParamList = {
-  MainTabs: undefined;
+// Định nghĩa các màn hình trong Stack
+export type RootStackParamList = {
+  Home: undefined;
   Details: { product: Product };
 };
 
-export type Product = {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  image?: string;
-  description?: string;
-};
-
 const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator();
-
-function MainTabs() {
-  return (
-    <Tab.Navigator initialRouteName="Home">
-      <Tab.Screen name="Home" component={Home} />
-      {/* <Tab.Screen name="Signup" component={SignupScreen} />
-      <Tab.Screen name="Login" component={LoginScreen} /> */}
-    </Tab.Navigator>
-  );
-}
 
 export default function AppNavigator() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-        <Stack.Screen name="Details" component={DetailsScreen} options={{ title: 'Chi tiết' }} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <Stack.Navigator initialRouteName="Home">
+      <Stack.Screen 
+        name="Home" 
+        component={Home} 
+        options={{ title: 'Trang chủ' }} 
+      />
+      <Stack.Screen 
+        name="Details" 
+        component={DetailsScreen} 
+        options={{ title: 'Chi tiết sản phẩm' }} 
+      />
+    </Stack.Navigator>
   );
 }

@@ -4,7 +4,8 @@ import { View, Text, FlatList, TextInput, TouchableOpacity, Image, StyleSheet } 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Header from '../components/Header';
 import CategorySelector from '../components/CategorySelector';
-import { Product } from './AppNavigator';
+import { Product } from '../components/Type';
+
 
 type Props = NativeStackScreenProps<any, any>;
 
@@ -23,6 +24,7 @@ export default function Home({ navigation }: Props) {
   const [username, setUsername] = useState<string | null>('user01');
 
   const [products] = useState<Product[]>(SAMPLE_PRODUCTS);
+  // khoi tao lay duoc cac loai
   const categories = useMemo(() => Array.from(new Set(products.map(p => p.category))), [products]);
 
   // filters
@@ -50,7 +52,10 @@ export default function Home({ navigation }: Props) {
   }, [products, selectedCategory, q, nameFilter, minPrice, maxPrice]);
 
   const renderItem = ({ item }: { item: Product }) => (
-    <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Details', { product: item })}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => navigation.navigate('Details', { product: item })} // <- navigator đã thêm
+    >
       <Image source={{ uri: item.image }} style={styles.image} />
       <Text style={styles.name}>{item.name}</Text>
       <Text style={styles.price}>{item.price.toLocaleString()} đ</Text>
@@ -75,7 +80,13 @@ export default function Home({ navigation }: Props) {
 
         <Text style={{ marginVertical: 8 }}>Kết quả: {filtered.length} sản phẩm</Text>
 
-        <FlatList data={filtered} keyExtractor={i => i.id} numColumns={2} renderItem={renderItem} contentContainerStyle={{ paddingBottom: 120 }} />
+        <FlatList
+          data={filtered}
+          keyExtractor={i => i.id}
+          numColumns={2}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 120 }}
+        />
       </View>
     </View>
   );

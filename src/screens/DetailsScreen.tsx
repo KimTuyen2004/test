@@ -1,8 +1,7 @@
-// src/screens/DetailsScreen.tsx
 import React from 'react';
 import { View, Text, Image, StyleSheet, Button } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Product } from './AppNavigator';
+import { Product } from '../components/Type'; // hoặc './AppNavigator' nếu chưa tách type
 
 type Props = NativeStackScreenProps<any, 'Details'>;
 
