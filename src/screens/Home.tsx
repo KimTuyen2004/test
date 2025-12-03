@@ -1,79 +1,112 @@
-// src/screens/HomeScreen.tsx
-import React, { useMemo, useState } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import Header from '../components/Header';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import CategorySelector from '../components/CategorySelector';
+import Header from '../components/Header';
 import { Product } from '../components/Type';
-
+import { fetchCategories, fetchProducts, initDatabase, User } from '../database/database';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import RegisterScreen from './RegisterScreen';
+import LoginScreen from './LoginScreen';
+import CardScreen from './CardScreen';
 
 type Props = NativeStackScreenProps<any, any>;
+const Tab = createBottomTabNavigator();
 
-// Sample data (các loại nước uống)
-const SAMPLE_PRODUCTS: Product[] = [
-  { id: '1', name: 'Cà phê sữa đá', category: 'Cà phê', price: 30000, image: 'https://i.imgur.com/2nCt3Sb.png', description: 'Cà phê pha phin + sữa đặc' },
-  { id: '2', name: 'Cà phê đen', category: 'Cà phê', price: 25000, image: 'https://i.imgur.com/DvpvklR.png' },
-  { id: '3', name: 'Trà sữa trân châu', category: 'Trà sữa', price: 45000, image: 'https://i.imgur.com/1bX5QH6.png' },
-  { id: '4', name: 'Trà đào cam sả', category: 'Trà hoa quả', price: 40000, image: 'https://i.imgur.com/2nCt3Sb.png' },
-  { id: '5', name: 'Sinh tố bơ', category: 'Sinh tố', price: 50000, image: 'https://i.imgur.com/DvpvklR.png' },
-  { id: '6', name: 'Nước ép cam', category: 'Nước ép', price: 35000, image: 'https://i.imgur.com/1bX5QH6.png' },
-];
+// ---------------- Home content (giữ nguyên logic cũ) ----------------
+function HomeContent({ navigation }: Props) {
+  const [user, setUser] = useState<User | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
 
-export default function Home({ navigation }: Props) {
-  // giả lập user đã đăng nhập (sau này thay bằng store)
-  const [username, setUsername] = useState<string | null>('user01');
-
-  const [products] = useState<Product[]>(SAMPLE_PRODUCTS);
-  // khoi tao lay duoc cac loai
-  const categories = useMemo(() => Array.from(new Set(products.map(p => p.category))), [products]);
-
-  // filters
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [q, setQ] = useState('');
-  const [nameFilter, setNameFilter] = useState('');
   const [minPrice, setMinPrice] = useState<string>('');
   const [maxPrice, setMaxPrice] = useState<string>('');
 
+  // --- Lấy dữ liệu user ---
+  useEffect(() => {
+    const fetchUser = async () => {
+      const storedUser = await AsyncStorage.getItem('user');
+      if (storedUser) setUser(JSON.parse(storedUser));
+      else navigation.replace('Login');
+    };
+    fetchUser();
+  }, []);
+
+  // --- Lấy dữ liệu sản phẩm & category ---
+  useEffect(() => {
+    const loadData = async () => {
+      await initDatabase();
+      const dbProducts = await fetchProducts();
+      const dbCategories = await fetchCategories();
+
+      const mappedProducts: Product[] = dbProducts.map(p => ({
+        id: p.id, // giữ number
+        name: p.name,
+        category: dbCategories.find(c => c.id === p.categoryId)?.name || 'Unknown',
+        price: p.price,
+        image: p.img,
+        description: p.description,
+      }));
+
+      setProducts(mappedProducts);
+
+      const catNames = Array.from(new Set(mappedProducts.map(p => p.category)));
+      setCategories(catNames);
+    };
+    loadData();
+  }, []);
+
+  // --- Filter logic (lọc theo category và khoảng giá) ---
   const filtered = useMemo(() => {
     const qLower = q.trim().toLowerCase();
-    const nameLower = nameFilter.trim().toLowerCase();
-    const min = parseFloat(minPrice) || 0;
-    const max = parseFloat(maxPrice) || Number.MAX_SAFE_INTEGER;
+    const min = minPrice.trim() === '' ? 0 : parseFloat(minPrice);
+    const max = maxPrice.trim() === '' ? Number.MAX_SAFE_INTEGER : parseFloat(maxPrice);
 
     return products.filter(p => {
       if (selectedCategory && p.category !== selectedCategory) return false;
-      if (qLower) {
-        if (!(p.name.toLowerCase().includes(qLower) || p.category.toLowerCase().includes(qLower))) return false;
-      }
-      if (nameLower && !p.name.toLowerCase().includes(nameLower)) return false;
+      if (qLower && !p.name.toLowerCase().includes(qLower) && !p.category.toLowerCase().includes(qLower)) return false;
       if (p.price < min || p.price > max) return false;
       return true;
     });
-  }, [products, selectedCategory, q, nameFilter, minPrice, maxPrice]);
+  }, [products, selectedCategory, q, minPrice, maxPrice]);
 
   const renderItem = ({ item }: { item: Product }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => navigation.navigate('Details', { product: item })} // <- navigator đã thêm
-    >
-      <Image source={{ uri: item.image }} style={styles.image} />
-      <Text style={styles.name}>{item.name}</Text>
-      <Text style={styles.price}>{item.price.toLocaleString()} đ</Text>
-      <Text style={styles.cat}>{item.category}</Text>
-    </TouchableOpacity>
-  );
+  <TouchableOpacity
+    style={styles.card}
+    onPress={() => {
+      if (!user) {
+        Alert.alert('⚠️', 'Bạn cần đăng nhập');
+        return;
+      }
+      navigation.navigate('Details', { product: item, user }); // <-- truyền user
+    }}
+  >
+    <Image source={{ uri: item.image }} style={styles.image} />
+    <Text style={styles.name}>{item.name}</Text>
+    <Text style={styles.price}>{item.price.toLocaleString()} đ</Text>
+    <Text style={styles.cat}>{item.category}</Text>
+  </TouchableOpacity>
+);
+
+
+  const handleLogout = async () => {
+    await AsyncStorage.removeItem('user');
+    Alert.alert('Thông báo', 'Bạn đã đăng xuất');
+    navigation.replace('Login');
+  };
 
   return (
     <View style={{ flex: 1 }}>
-      <Header username={username} onLogout={() => setUsername(null)} />
+      <Header username={user?.username} onLogout={handleLogout} />
 
       <View style={styles.container}>
         <CategorySelector categories={categories} selected={selectedCategory} onSelect={setSelectedCategory} />
-
         <TextInput placeholder="Tìm kiếm theo tên hoặc danh mục" style={styles.input} value={q} onChangeText={setQ} />
 
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TextInput placeholder="Lọc tên" style={[styles.input, { flex: 1 }]} value={nameFilter} onChangeText={setNameFilter} />
           <TextInput placeholder="Min giá" style={[styles.input, { width: 100 }]} keyboardType="numeric" value={minPrice} onChangeText={setMinPrice} />
           <TextInput placeholder="Max giá" style={[styles.input, { width: 100 }]} keyboardType="numeric" value={maxPrice} onChangeText={setMaxPrice} />
         </View>
@@ -82,7 +115,7 @@ export default function Home({ navigation }: Props) {
 
         <FlatList
           data={filtered}
-          keyExtractor={i => i.id}
+          keyExtractor={i => i.id || i.name}
           numColumns={2}
           renderItem={renderItem}
           contentContainerStyle={{ paddingBottom: 120 }}
@@ -92,6 +125,41 @@ export default function Home({ navigation }: Props) {
   );
 }
 
+// ---------------- Home with Bottom Tabs ----------------
+export default function HomeTabs({ navigation }: Props) {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: { backgroundColor: '#f4f6f8', height: 60 },
+        tabBarLabelStyle: { fontSize: 12, marginBottom: 4 },
+      }}
+    >
+      <Tab.Screen
+        name="HomeUser"
+        component={HomeContent}
+        options={{ tabBarIcon: ({ color, size }) => <Text style={{ fontSize: size, color }}>🏠</Text> }}
+      />
+      <Tab.Screen
+        name="Card"
+        component={CardScreen} // import RegisterScreen ở trên hoặc từ stack khác
+        options={{ tabBarIcon: ({ color, size }) => <Text style={{ fontSize: size, color }}>➕</Text> }}
+      />
+      <Tab.Screen
+        name="Register"
+        component={RegisterScreen} // import RegisterScreen ở trên hoặc từ stack khác
+        options={{ tabBarIcon: ({ color, size }) => <Text style={{ fontSize: size, color }}>➕</Text> }}
+      />
+      <Tab.Screen
+        name="Login"
+        component={LoginScreen} // import LoginScreen ở trên hoặc từ stack khác
+        options={{ tabBarIcon: ({ color, size }) => <Text style={{ fontSize: size, color }}>🔑</Text> }}
+      />
+    </Tab.Navigator>
+  );
+}
+
+// ---------------- Styles ----------------
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 12 },
   input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 8, marginBottom: 8 },
